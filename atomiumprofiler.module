@@ -1,0 +1,12 @@
+<?php
+
+/**
+ * Implements hook_cfrplugin_info().
+ */
+function atomiumprofiler_cfrplugin_info() {
+  if (NULL === drupal_get_filename('theme', 'atomium')) {
+    drupal_set_message('atomiumprofiler is enabled, but atomium is nowhere to be found.', 'warning');
+    return [];
+  }
+  return cfrplugindiscovery()->moduleFileScanPsr4(__FILE__);
+}

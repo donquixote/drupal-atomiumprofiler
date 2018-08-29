@@ -1,0 +1,5 @@
+name = Atomium profiler
+description = Profiling cases for Atomium theme.
+core = 7.x
+
+dependencies[] = cfrprofiler
