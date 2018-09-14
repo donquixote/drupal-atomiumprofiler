@@ -2,7 +2,6 @@
 
 namespace Drupal\atomiumprofiler\ProfilingCase;
 
-use Drupal\atomium\Attributes;
 use Drupal\cfrprofiler\ProfilingCase\ProfilingCaseInterface;
 
 abstract class ProfilingCase_AtomiumBase implements ProfilingCaseInterface {
