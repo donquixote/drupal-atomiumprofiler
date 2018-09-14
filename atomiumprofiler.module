@@ -10,3 +10,50 @@ function atomiumprofiler_cfrplugin_info() {
   }
   return cfrplugindiscovery()->moduleFileScanPsr4(__FILE__);
 }
+
+/**
+ * Implements hook_theme().
+ */
+function atomiumprofiler_theme() {
+  return [
+    /* @see theme_atomiumprofiler_example_with_element() */
+    'atomiumprofiler_example_with_element' => [
+      'render element' => 'element',
+    ],
+    /* @see theme_atomiumprofiler_example_with_variables() */
+    'atomiumprofiler_example_with_variables' => [
+      'variables' => array('text' => NULL),
+    ],
+    /* @see theme_atomiumprofiler_example_minimal() */
+    'atomiumprofiler_example_minimal' => [
+      'variables' => array('text' => NULL),
+    ],
+  ];
+}
+
+/**
+ * @param array $variables
+ *
+ * @return string
+ */
+function theme_atomiumprofiler_example_with_element(array $variables) {
+  return __FUNCTION__;
+}
+
+/**
+ * @param array $variables
+ *
+ * @return string
+ */
+function theme_atomiumprofiler_example_with_variables(array $variables) {
+  return check_plain($variables['text']);
+}
+
+/**
+ * @param array $variables
+ *
+ * @return string
+ */
+function theme_atomiumprofiler_example_minimal(array $variables) {
+  return __FUNCTION__;
+}
