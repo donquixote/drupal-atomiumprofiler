@@ -26,6 +26,7 @@ class ProfilingCase_ThemeHook implements ProfilingCaseInterface {
    */
   public static function exampleWithElement() {
     return new self(
+      /* @see theme_atomiumprofiler_example_with_element() */
       'atomiumprofiler_example_with_element',
       ['element' => []]);
   }
@@ -40,6 +41,7 @@ class ProfilingCase_ThemeHook implements ProfilingCaseInterface {
    */
   public static function exampleWithVariables() {
     return new self(
+      /* @see theme_atomiumprofiler_example_with_variables() */
       'atomiumprofiler_example_with_variables',
       ['text' => 'hello']);
   }
@@ -54,6 +56,7 @@ class ProfilingCase_ThemeHook implements ProfilingCaseInterface {
    */
   public static function exampleMinimal() {
     return new self(
+      /* @see theme_atomiumprofiler_example_minimal() */
       'atomiumprofiler_example_minimal',
       []);
   }
