@@ -85,7 +85,7 @@ class ProfilingCase_ThemeHook implements ProfilingCaseInterface {
    * @throws \Exception
    */
   public function run() {
-    for ($i = 10000; $i > 0; --$i) {
+    for ($i = 1000; $i > 0; --$i) {
       theme($this->hook, $this->variables);
     }
   }
