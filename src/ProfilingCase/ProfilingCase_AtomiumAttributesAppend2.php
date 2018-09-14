@@ -10,6 +10,15 @@ use Drupal\atomium\Attributes;
 class ProfilingCase_AtomiumAttributesAppend2 extends ProfilingCase_AtomiumBase {
 
   /**
+   * Clears static caches etc.
+   *
+   * This method does not count on profiling time.
+   */
+  public function reset() {
+    // Reset nothing.
+  }
+
+  /**
    * Returns nothing.
    */
   public function run() {

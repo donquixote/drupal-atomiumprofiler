@@ -61,6 +61,15 @@ class ProfilingCase_AtomiumAttributesAppend implements ProfilingCaseInterface {
   }
 
   /**
+   * Clears static caches etc.
+   *
+   * This method does not count on profiling time.
+   */
+  public function reset() {
+    // Reset nothing.
+  }
+
+  /**
    * Returns nothing.
    */
   public function run() {
