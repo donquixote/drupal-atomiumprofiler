@@ -13,6 +13,7 @@ class DataProvider_ThemeRegistry implements DataProviderInterface {
    * @return array
    */
   public function getData() {
-    return theme_get_registry();
+    drupal_theme_rebuild();
+    return theme_get_registry()['link'];
   }
 }

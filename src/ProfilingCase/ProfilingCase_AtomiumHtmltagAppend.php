@@ -2,7 +2,9 @@
 
 namespace Drupal\atomiumprofiler\ProfilingCase;
 
-use Drupal\atomium\htmltag\Attributes\AttributesFactory;
+use drupol\htmltag\Attribute\AttributeFactory;
+use drupol\htmltag\Attributes\Attributes;
+use drupol\htmltag\Attributes\AttributesFactory;
 
 /**
  * @CfrPlugin("atomiumHtmltagAppendExample2", "Atomium htmltag Attributes->append()")
@@ -22,14 +24,16 @@ class ProfilingCase_AtomiumHtmltagAppend extends ProfilingCase_AtomiumBase {
    * Returns nothing.
    */
   public function run() {
-    $original = AttributesFactory::build(['class' => ['xxx', 'yyy']]);
+
+    $factory = new AttributeFactory();
 
     for ($i = 1000; $i > 0; --$i) {
-      $attributes = clone $original;
+      $attributes = new Attributes($factory,['class' => ['xxx', 'yyy']]);
       $attributes->append('class', ['zzz', 'yyy yy', ['zz']]);
       $attributes->append('selected', TRUE);
       $attributes->append('selected', ['aa', 'bb']);
       $attributes->append('class', 'xxx yyy');
+      $attributes->render();
     }
   }
 }

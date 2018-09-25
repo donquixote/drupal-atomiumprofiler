@@ -22,13 +22,13 @@ class ProfilingCase_AtomiumAttributesAppend2 extends ProfilingCase_AtomiumBase {
    * Returns nothing.
    */
   public function run() {
-    $original = new Attributes(['class' => ['xxx', 'yyy']]);
     for ($i = 1000; $i > 0; --$i) {
-      $attributes = clone $original;
+      $attributes = new Attributes(['class' => ['xxx', 'yyy']]);
       $attributes->append('class', ['zzz', 'yyy yy', ['zz']]);
       $attributes->append('selected', TRUE);
       $attributes->append('selected', ['aa', 'bb']);
       $attributes->append('class', 'xxx yyy');
+      $attributes->__toString();
     }
   }
 }

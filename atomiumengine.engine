@@ -1,0 +1,149 @@
+<?php
+
+/**
+ * @param object $template
+ *
+ * @see \phptemplate_init()
+ */
+function atomiumengine_init($template) {
+  $file = dirname($template->filename) . '/template.php';
+  if (file_exists($file)) {
+    include_once DRUPAL_ROOT . '/' . $file;
+  }
+}
+
+/**
+ * @param array[] $registry
+ * @param string $type
+ *   One of 'theme_engine' or 'base_theme_engine'.
+ * @param string $theme
+ * @param string $path
+ *
+ * @return array[]
+ *
+ * @see \phptemplate_theme()
+ * @see \_theme_build_registry()
+ * @see \_theme_process_registry()
+ */
+function atomiumengine_theme(array &$registry, $type, $theme, $path) {
+
+  $templates = drupal_find_theme_functions($registry, array($theme));
+  $templates += drupal_find_theme_templates($registry, '.tpl.php', $path);
+
+  try {
+    list($theme_object, $base_theme_objects) = _atomiumengine_get_theme_and_parents();
+  }
+  catch (\Exception $e) {
+    return $templates;
+  }
+
+  if (empty($theme_object->info['ignore_base_theme_hooks'])) {
+    return $templates;
+  }
+
+  $hooks_to_ignore = $theme_object->info['ignore_base_theme_hooks'];
+
+  if ('base_theme_engine' === $type) {
+    // Remove undesired theme hooks in $templates.
+    foreach ($hooks_to_ignore as $hook) {
+      unset($templates[$hook]);
+    }
+  }
+  else {
+    _atomiumengine_remove_undesired_processor_functions($registry, $base_theme_objects, $hooks_to_ignore);
+  }
+
+  return $templates;
+}
+
+function _atomiumengine_remove_undesired_processor_functions(array &$existing, array $base_theme_objects, array $hooks_to_ignore) {
+  # $hooks_to_ignore_combined = array_combine($hooks_to_ignore, $hooks_to_ignore);
+  # $hooks_to_ignore_combined = array_intersect_key($hooks_to_ignore_combined, $existing);
+
+  $variable_process_phases = array(
+    'preprocess functions' => 'preprocess',
+    'process functions'    => 'process',
+  );
+
+  // Remove generic processor functions like THEMENAME_preprocess().
+  foreach ($variable_process_phases as $phase_key => $phase) {
+    foreach ($base_theme_objects as $base_theme_object) {
+      $f = $base_theme_object->name . '_' . $phase;
+      if (!function_exists($f)) {
+        continue;
+      }
+      foreach ($hooks_to_ignore as $hook) {
+        if (!isset($existing[$hook][$phase_key])) {
+          continue;
+        }
+        foreach (array_keys($existing[$hook][$phase_key]) as $i) {
+          unset($existing[$hook][$phase_key][$i]);
+          if ([] === $existing[$hook][$phase_key]) {
+            unset($existing[$hook][$phase_key]);
+          }
+        }
+      }
+    }
+  }
+
+  // Remove specific processor functions like THEMENAME_preprocess_HOOK().
+  foreach ($hooks_to_ignore as $hook) {
+    if (!isset($existing[$hook])) {
+      continue;
+    }
+    foreach ($variable_process_phases as $phase_key => $phase) {
+      if (!isset($existing[$hook][$phase_key])) {
+        continue;
+      }
+      foreach ($base_theme_objects as $base_theme_object) {
+        $f = $base_theme_object->name . '_' . $phase;
+        if (!function_exists($f)) {
+          continue;
+        }
+        foreach (array_keys($existing[$hook][$phase_key]) as $i) {
+          unset($existing[$hook][$phase_key][$i]);
+          if ([] === $existing[$hook][$phase_key]) {
+            unset($existing[$hook][$phase_key]);
+          }
+        }
+      }
+    }
+  }
+
+  // Mark those.
+  foreach ($hooks_to_ignore as $hook) {
+    if (!isset($existing[$hook])) {
+      continue;
+    }
+    $existing[$hook]['atomiumengine_ignore'] = TRUE;
+  }
+}
+
+/**
+ * @return array
+ *   Format: [$theme_object, $base_theme_objects]
+ *
+ * @throws \Exception
+ */
+function _atomiumengine_get_theme_and_parents() {
+
+  list($callback, $arguments) = _theme_registry_callback();
+
+  if ('_theme_load_registry' !== $callback && '_theme_load_offline_registry' !== $callback) {
+    // This is strange.
+    // @todo Log to watchdog!
+    throw new \Exception("Strange things happen.");
+  }
+
+  list($theme_object, $base_theme_objects, $theme_engine) = $arguments;
+
+  if ($theme_engine !== 'atomiumengine') {
+    // This is strange.
+    // @todo Log to watchdog!
+    throw new \Exception("Strange things happen.");
+  }
+
+  unset($theme_engine);
+
+  return array($theme_object, $base_theme_objects);
+}

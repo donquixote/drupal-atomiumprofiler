@@ -5,9 +5,9 @@ namespace Drupal\atomiumprofiler\ProfilingCase;
 use Drupal\cfrprofiler\ProfilingCase\ProfilingCaseInterface;
 
 /**
- * @CfrPlugin("themeRegistryRebuild", "Theme registry rebuild")
+ * @CfrPlugin("arraySumModuleList", "['template'] + module_list()")
  */
-class ProfilingCase_ThemeBuildRegistry implements ProfilingCaseInterface {
+class ProfilingCase_ArraySumModuleList implements ProfilingCaseInterface {
 
   /**
    * Clears static caches etc.
@@ -15,7 +15,7 @@ class ProfilingCase_ThemeBuildRegistry implements ProfilingCaseInterface {
    * This method does not count on profiling time.
    */
   public function reset() {
-    drupal_theme_rebuild();
+    // TODO: Implement reset() method.
   }
 
   /**
@@ -24,6 +24,10 @@ class ProfilingCase_ThemeBuildRegistry implements ProfilingCaseInterface {
    * @throws \Exception
    */
   public function run() {
-    theme_get_registry(TRUE);
+    $ml = module_list();
+    for ($i = 1000; $i > 0; --$i) {
+      $arr = ['template'];
+      $arr += $ml;
+    }
   }
 }

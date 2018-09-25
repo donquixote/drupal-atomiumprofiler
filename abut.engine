@@ -1,0 +1,334 @@
+<?php
+
+/**
+ * @param object $template
+ *
+ * @see \phptemplate_init()
+ */
+function abut_init($template) {
+  $file = dirname($template->filename) . '/template.php';
+  if (file_exists($file)) {
+    include_once DRUPAL_ROOT . '/' . $file;
+  }
+}
+
+/**
+ * @param array[] $existing
+ * @param string $type
+ *   One of 'theme_engine' or 'base_theme_engine'.
+ * @param string $theme
+ * @param string $path
+ *
+ * @return array[]
+ *
+ * @see \phptemplate_theme()
+ * @see \_theme_build_registry()
+ * @see \_theme_process_registry()
+ */
+function abut_theme($existing, $type, $theme, $path) {
+
+  if ('base_theme_engine' === $type) {
+    // Skip all base themes, deal with them later.
+    return [];
+  }
+
+  $theme_objects_all = list_themes();
+  $theme_object_current = $theme_objects_all[$theme];
+  $theme_objects_ancestry = [$theme_object_current];
+  $ancestor = $theme;
+  while (isset($theme_objects_all[$ancestor]->base_theme)) {
+    $ancestor = $theme_objects_all[$ancestor]->base_theme;
+    $theme_objects_ancestry[] = $theme_objects_all[$ancestor];
+  }
+
+  require_once DRUPAL_ROOT . '/themes/engines/phptemplate/phptemplate.engine';
+
+  $items_in_ancestry = [];
+  foreach ($theme_objects_ancestry as $theme_object) {
+    $result = phptemplate_theme($existing, $type, $theme, $path);
+    foreach ($result as $hook => $info) {
+
+    }
+  }
+
+  $items = [];
+
+  # dpm(__FUNCTION__ . "(*, $type, $theme, $path)");
+  return $items;
+}
+
+function _abut_process_registry_items(array $cache, array $result, $name, $type, $theme, $path) {
+
+  // Processor functions work in two distinct phases with the process
+  // functions always being executed after the preprocess functions.
+  $variable_process_phases = array(
+    'preprocess functions' => 'preprocess',
+    'process functions'    => 'process',
+  );
+
+  $hook_defaults = array(
+    'variables' => TRUE,
+    'render element' => TRUE,
+    'pattern' => TRUE,
+    'base hook' => TRUE,
+  );
+
+  if ($type == 'module') {
+    $processor_prefixes = ['template'] + module_list();
+    $theme_function_prefix = 'theme_';
+  }
+  elseif ($type == 'theme_engine' || $type == 'base_theme_engine') {
+    $processor_prefixes = [$name . '_engine', $theme];
+    $theme_function_prefix = $theme . '_';
+  }
+  else {
+    $processor_prefixes = [$name];
+    $theme_function_prefix = $theme . '_';
+  }
+
+  foreach ($result as $hook => $info) {
+    // When a theme or engine overrides a module's theme function
+    // $result[$hook] will only contain key/value pairs for information being
+    // overridden.  Pull the rest of the information from what was defined by
+    // an earlier hook.
+
+    // Fill in the type and path of the module, theme, or engine that
+    // implements this theme function.
+    $result[$hook]['type'] = $type;
+    $result[$hook]['theme path'] = $path;
+
+    // If function and file are omitted, default to standard naming
+    // conventions.
+    if (!isset($info['template']) && !isset($info['function'])) {
+      $result[$hook]['function'] = $theme_function_prefix . $hook;
+    }
+
+    if (isset($cache[$hook]['includes'])) {
+      $result[$hook]['includes'] = $cache[$hook]['includes'];
+    }
+
+    // If the theme implementation defines a file, then also use the path
+    // that it defined. Otherwise use the default path. This allows
+    // system.module to declare theme functions on behalf of core .include
+    // files.
+    if (isset($info['file'])) {
+      $include_file = isset($info['path'])
+        ? $info['path']
+        : $path;
+      $include_file .= '/' . $info['file'];
+      include_once DRUPAL_ROOT . '/' . $include_file;
+      $result[$hook]['includes'][] = $include_file;
+    }
+
+    // If the default keys are not set, use the default values registered
+    // by the module.
+    if (isset($cache[$hook])) {
+      $result[$hook] += array_intersect_key($cache[$hook], $hook_defaults);
+    }
+
+    // The following apply only to theming hooks implemented as templates.
+    if (isset($info['template'])) {
+      // Prepend the current theming path when none is set.
+      if (!isset($info['path'])) {
+        $result[$hook]['template'] = $path . '/' . $info['template'];
+      }
+    }
+
+    // Allow variable processors for all theming hooks, whether the hook is
+    // implemented as a template or as a function.
+    foreach ($variable_process_phases as $phase_key => $phase) {
+      // Check for existing variable processors. Ensure arrayness.
+      if (!isset($info[$phase_key]) || !is_array($info[$phase_key])) {
+        $info[$phase_key] = [];
+        foreach ($processor_prefixes as $prefix) {
+          // Only use non-hook-specific variable processors for theming hooks
+          // implemented as templates. See theme().
+          if (isset($info['template'])
+            && function_exists(
+              $prefix . '_' . $phase)) {
+            $info[$phase_key][] = $prefix . '_' . $phase;
+          }
+          if (function_exists($prefix . '_' . $phase . '_' . $hook)) {
+            $info[$phase_key][] = $prefix . '_' . $phase . '_' . $hook;
+          }
+        }
+      }
+      // Check for the override flag and prevent the cached variable
+      // processors from being used. This allows themes or theme engines to
+      // remove variable processors set earlier in the registry build.
+      if (!empty($info['override ' . $phase_key])) {
+        // Flag not needed inside the registry.
+        unset($result[$hook]['override ' . $phase_key]);
+      }
+      elseif (isset($cache[$hook][$phase_key])
+        && is_array($cache[$hook][$phase_key])) {
+        $info[$phase_key] = array_merge($cache[$hook][$phase_key], $info[$phase_key]);
+      }
+      $result[$hook][$phase_key] = $info[$phase_key];
+    }
+  }
+}
+
+function _abut_process_registry_item($hook, array &$info, array $existing_item = NULL, $name, $type, $theme, $path) {
+
+  // Processor functions work in two distinct phases with the process
+  // functions always being executed after the preprocess functions.
+  $variable_process_phases = array(
+    'preprocess functions' => 'preprocess',
+    'process functions'    => 'process',
+  );
+
+  $hook_defaults = array(
+    'variables' => TRUE,
+    'render element' => TRUE,
+    'pattern' => TRUE,
+    'base hook' => TRUE,
+  );
+
+  // When a theme or engine overrides a module's theme function
+  // $info will only contain key/value pairs for information being
+  // overridden.  Pull the rest of the information from what was defined by
+  // an earlier hook.
+
+  // Fill in the type and path of the module, theme, or engine that
+  // implements this theme function.
+  $info['type'] = $type;
+  $info['theme path'] = $path;
+
+  // If function and file are omitted, default to standard naming
+  // conventions.
+  if (!isset($info['template']) && !isset($info['function'])) {
+    $info['function'] = ($type == 'module' ? 'theme_' : $name . '_') . $hook;
+  }
+
+  if (isset($existing_item['includes'])) {
+    $info['includes'] = $existing_item['includes'];
+  }
+
+  // If the theme implementation defines a file, then also use the path
+  // that it defined. Otherwise use the default path. This allows
+  // system.module to declare theme functions on behalf of core .include
+  // files.
+  if (isset($info['file'])) {
+    $include_file = isset($info['path']) ? $info['path'] : $path;
+    $include_file .= '/' . $info['file'];
+    include_once DRUPAL_ROOT . '/' . $include_file;
+    $info['includes'][] = $include_file;
+  }
+
+  // If the default keys are not set, use the default values registered
+  // by the module.
+  if (NULL !== $existing_item) {
+    $info += array_intersect_key($existing_item, $hook_defaults);
+  }
+
+  // The following apply only to theming hooks implemented as templates.
+  if (isset($info['template'])) {
+    // Prepend the current theming path when none is set.
+    if (!isset($info['path'])) {
+      $info['template'] = $path . '/' . $info['template'];
+    }
+  }
+
+  // Allow variable processors for all theming hooks, whether the hook is
+  // implemented as a template or as a function.
+  foreach ($variable_process_phases as $phase_key => $phase) {
+    // Check for existing variable processors. Ensure arrayness.
+    if (!isset($info[$phase_key]) || !is_array($info[$phase_key])) {
+      $info[$phase_key] = array();
+      $prefixes = array();
+      if ($type == 'module') {
+        // Default variable processor prefix.
+        $prefixes[] = 'template';
+        // Add all modules so they can intervene with their own variable
+        // processors. This allows them to provide variable processors even
+        // if they are not the owner of the current hook.
+        $prefixes += module_list();
+      }
+      elseif ($type == 'theme_engine' || $type == 'base_theme_engine') {
+        // Theme engines get an extra set that come before the normally
+        // named variable processors.
+        $prefixes[] = $name . '_engine';
+        // The theme engine registers on behalf of the theme using the
+        // theme's name.
+        $prefixes[] = $theme;
+      }
+      else {
+        // This applies when the theme manually registers their own variable
+        // processors.
+        $prefixes[] = $name;
+      }
+      foreach ($prefixes as $prefix) {
+        // Only use non-hook-specific variable processors for theming hooks
+        // implemented as templates. See theme().
+        if (isset($info['template']) && function_exists($prefix . '_' . $phase)) {
+          $info[$phase_key][] = $prefix . '_' . $phase;
+        }
+        if (function_exists($prefix . '_' . $phase . '_' . $hook)) {
+          $info[$phase_key][] = $prefix . '_' . $phase . '_' . $hook;
+        }
+      }
+    }
+    // Check for the override flag and prevent the cached variable
+    // processors from being used. This allows themes or theme engines to
+    // remove variable processors set earlier in the registry build.
+    if (!empty($info['override ' . $phase_key])) {
+      // Flag not needed inside the registry.
+      unset($info['override ' . $phase_key]);
+    }
+    elseif (isset($existing_item[$phase_key]) && is_array($existing_item[$phase_key])) {
+      $info[$phase_key] = array_merge($existing_item[$phase_key], $info[$phase_key]);
+    }
+    $info[$phase_key] = $info[$phase_key];
+  }
+}
+
+function _abut_registry_item_find_phase_functions() {
+  // Check for existing variable processors. Ensure arrayness.
+  if (!isset($info[$phase_key]) || !is_array($info[$phase_key])) {
+    $info[$phase_key] = array();
+    $prefixes = array();
+    if ($type == 'module') {
+      // Default variable processor prefix.
+      $prefixes[] = 'template';
+      // Add all modules so they can intervene with their own variable
+      // processors. This allows them to provide variable processors even
+      // if they are not the owner of the current hook.
+      $prefixes += module_list();
+    }
+    elseif ($type == 'theme_engine' || $type == 'base_theme_engine') {
+      // Theme engines get an extra set that come before the normally
+      // named variable processors.
+      $prefixes[] = $name . '_engine';
+      // The theme engine registers on behalf of the theme using the
+      // theme's name.
+      $prefixes[] = $theme;
+    }
+    else {
+      // This applies when the theme manually registers their own variable
+      // processors.
+      $prefixes[] = $name;
+    }
+    foreach ($prefixes as $prefix) {
+      // Only use non-hook-specific variable processors for theming hooks
+      // implemented as templates. See theme().
+      if (isset($info['template']) && function_exists($prefix . '_' . $phase)) {
+        $info[$phase_key][] = $prefix . '_' . $phase;
+      }
+      if (function_exists($prefix . '_' . $phase . '_' . $hook)) {
+        $info[$phase_key][] = $prefix . '_' . $phase . '_' . $hook;
+      }
+    }
+  }
+  // Check for the override flag and prevent the cached variable
+  // processors from being used. This allows themes or theme engines to
+  // remove variable processors set earlier in the registry build.
+  if (!empty($info['override ' . $phase_key])) {
+    // Flag not needed inside the registry.
+    unset($info['override ' . $phase_key]);
+  }
+  elseif (isset($existing_item[$phase_key]) && is_array($existing_item[$phase_key])) {
+    $info[$phase_key] = array_merge($existing_item[$phase_key], $info[$phase_key]);
+  }
+  return $functions;
+}
